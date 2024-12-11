@@ -120,7 +120,7 @@ var _ = Describe("DryRun", func() {
 				RepositoryURL:    "https://charts.bitnami.com/bitnami",
 				RepositoryName:   "bitnami",
 				ChartName:        "bitnami/mysql",
-				ChartVersion:     "11.1.9",
+				ChartVersion:     "12.0.0",
 				ReleaseName:      "mysql",
 				ReleaseNamespace: "mysql",
 				HelmChartAction:  configv1beta1.HelmChartActionInstall,
@@ -141,7 +141,7 @@ var _ = Describe("DryRun", func() {
 		verifyDeployedGroupVersionKind(clusterProfile.Name)
 
 		charts := []configv1beta1.Chart{
-			{ReleaseName: "mysql", ChartVersion: "11.1.9", Namespace: "mysql"},
+			{ReleaseName: "mysql", ChartVersion: "12.0.0", Namespace: "mysql"},
 		}
 
 		verifyClusterConfiguration(configv1beta1.ClusterProfileKind, clusterProfile.Name,
@@ -195,7 +195,7 @@ var _ = Describe("DryRun", func() {
 				RepositoryURL:    "https://charts.bitnami.com/bitnami",
 				RepositoryName:   "bitnami",
 				ChartName:        "bitnami/mysql",
-				ChartVersion:     "11.1.9",
+				ChartVersion:     "12.1.0",
 				ReleaseName:      "mysql",
 				ReleaseNamespace: "mysql",
 				HelmChartAction:  configv1beta1.HelmChartActionInstall,
@@ -204,7 +204,7 @@ var _ = Describe("DryRun", func() {
 				RepositoryURL:    "https://charts.bitnami.com/bitnami",
 				RepositoryName:   "bitnami",
 				ChartName:        "bitnami/redis",
-				ChartVersion:     "19.6.1",
+				ChartVersion:     "20.4.0",
 				ReleaseName:      "redis",
 				ReleaseNamespace: "redis",
 				HelmChartAction:  configv1beta1.HelmChartActionInstall,
@@ -213,7 +213,7 @@ var _ = Describe("DryRun", func() {
 				RepositoryURL:    "https://charts.bitnami.com/bitnami",
 				RepositoryName:   "bitnami",
 				ChartName:        "bitnami/postgresql",
-				ChartVersion:     "15.5.16",
+				ChartVersion:     "16.2.3",
 				ReleaseName:      "postgresql",
 				ReleaseNamespace: "postgresql",
 				HelmChartAction:  configv1beta1.HelmChartActionUninstall,
@@ -281,6 +281,66 @@ var _ = Describe("DryRun", func() {
 
 		verifyDeployedGroupVersionKind(clusterProfile.Name)
 
+		Byf("Change ClusterProfile %s tier", dryRunClusterProfile.Name)
+		setTier(dryRunClusterProfile.Name, int32(50))
+
+		// Because of the new tier, the DryRun ClusterProfile wins every conflict. So action would
+		// be upgrade for mysql helm chart and the Kong ServiceAccount (which were previously reported
+		// as conflict)
+
+		By("Verifying ClusterReport for helm reports")
+		Eventually(func() error {
+			currentClusterReport := &configv1beta1.ClusterReport{}
+			err := k8sClient.Get(context.TODO(),
+				types.NamespacedName{Namespace: dryRunClusterSummary.Spec.ClusterNamespace, Name: clusterReportName},
+				currentClusterReport)
+			if err != nil {
+				return err
+			}
+			// Another ClusterProfile is managing mysql release
+			err = verifyReleaseReport(currentClusterReport, currentClusterProfile.Spec.HelmCharts[0].ReleaseNamespace,
+				currentClusterProfile.Spec.HelmCharts[0].ReleaseName, string(configv1beta1.UpgradeHelmAction))
+			if err != nil {
+				return err
+			}
+			// If not in DryRun, it would install redis release
+			err = verifyReleaseReport(currentClusterReport, currentClusterProfile.Spec.HelmCharts[1].ReleaseNamespace,
+				currentClusterProfile.Spec.HelmCharts[1].ReleaseName, string(configv1beta1.InstallHelmAction))
+			if err != nil {
+				return err
+			}
+			// postgres is Uninstall and not installed yet so no action
+			err = verifyReleaseReport(currentClusterReport, currentClusterProfile.Spec.HelmCharts[2].ReleaseNamespace,
+				currentClusterProfile.Spec.HelmCharts[2].ReleaseName, string(configv1beta1.NoHelmAction))
+			if err != nil {
+				return err
+			}
+			return nil
+		}, timeout, pollingInterval).Should(BeNil())
+
+		By("Verifying ClusterReport for policy reports")
+		Eventually(func() error {
+			currentClusterReport := &configv1beta1.ClusterReport{}
+			err := k8sClient.Get(context.TODO(),
+				types.NamespacedName{Namespace: dryRunClusterSummary.Spec.ClusterNamespace, Name: clusterReportName}, currentClusterReport)
+			if err != nil {
+				return err
+			}
+			// If not in DryRun, it would create Kong Role
+			err = verifyResourceReport(currentClusterReport, "kong2", "kong-leader-election",
+				"Role", "rbac.authorization.k8s.io", string(configv1beta1.CreateResourceAction))
+			if err != nil {
+				return err
+			}
+			// Another ClusterProfile is managing this, even though by referencing same ConfigMap this ClusterProfile is, so conflict.
+			err = verifyResourceReport(currentClusterReport, "kong", "kong-serviceaccount",
+				"ServiceAccount", "", string(configv1beta1.UpdateResourceAction))
+			if err != nil {
+				return err
+			}
+			return nil
+		}, timeout, pollingInterval).Should(BeNil())
+
 		Byf("Delete ClusterProfile %s", clusterProfile.Name)
 		deleteClusterProfile(clusterProfile)
 
@@ -303,7 +363,7 @@ var _ = Describe("DryRun", func() {
 				RepositoryURL:    "https://charts.bitnami.com/bitnami",
 				RepositoryName:   "bitnami",
 				ChartName:        "bitnami/mysql",
-				ChartVersion:     "11.1.9",
+				ChartVersion:     "12.1.0",
 				ReleaseName:      "mysql",
 				ReleaseNamespace: "mysql",
 				HelmChartAction:  configv1beta1.HelmChartActionInstall,
@@ -312,7 +372,7 @@ var _ = Describe("DryRun", func() {
 				RepositoryURL:    "https://charts.bitnami.com/bitnami",
 				RepositoryName:   "bitnami",
 				ChartName:        "bitnami/redis",
-				ChartVersion:     "19.6.1",
+				ChartVersion:     "20.4.0",
 				ReleaseName:      "redis",
 				ReleaseNamespace: "redis",
 				HelmChartAction:  configv1beta1.HelmChartActionInstall,
@@ -321,7 +381,7 @@ var _ = Describe("DryRun", func() {
 				RepositoryURL:    "https://charts.bitnami.com/bitnami",
 				RepositoryName:   "bitnami",
 				ChartName:        "bitnami/postgresql",
-				ChartVersion:     "15.5.16",
+				ChartVersion:     "16.2.3",
 				ReleaseName:      "postgresql",
 				ReleaseNamespace: "postgresql",
 				HelmChartAction:  configv1beta1.HelmChartActionInstall,
@@ -358,16 +418,18 @@ var _ = Describe("DryRun", func() {
 				RepositoryURL:    "https://charts.bitnami.com/bitnami",
 				RepositoryName:   "bitnami",
 				ChartName:        "bitnami/mysql",
-				ChartVersion:     "11.1.9",
+				ChartVersion:     "12.1.0",
 				ReleaseName:      "mysql",
 				ReleaseNamespace: "mysql",
 				HelmChartAction:  configv1beta1.HelmChartActionInstall,
+				Values: `rbac:
+  create: false`,
 			},
 			{
 				RepositoryURL:    "https://charts.bitnami.com/bitnami",
 				RepositoryName:   "bitnami",
 				ChartName:        "bitnami/redis",
-				ChartVersion:     "19.6.1",
+				ChartVersion:     "20.4.0",
 				ReleaseName:      "redis",
 				ReleaseNamespace: "redis",
 				HelmChartAction:  configv1beta1.HelmChartActionInstall,
@@ -376,7 +438,7 @@ var _ = Describe("DryRun", func() {
 				RepositoryURL:    "https://charts.bitnami.com/bitnami",
 				RepositoryName:   "bitnami",
 				ChartName:        "bitnami/postgresql",
-				ChartVersion:     "15.5.16",
+				ChartVersion:     "16.2.3",
 				ReleaseName:      "postgresql",
 				ReleaseNamespace: "postgresql",
 				HelmChartAction:  configv1beta1.HelmChartActionUninstall,
@@ -396,13 +458,13 @@ var _ = Describe("DryRun", func() {
 			if err != nil {
 				return err
 			}
-			// ClusterProfile is managing mysql release
+			// ClusterProfile is managing mysql release but values changed
 			err = verifyReleaseReport(currentClusterReport, currentClusterProfile.Spec.HelmCharts[0].ReleaseNamespace,
-				currentClusterProfile.Spec.HelmCharts[0].ReleaseName, string(configv1beta1.NoHelmAction))
+				currentClusterProfile.Spec.HelmCharts[0].ReleaseName, string(configv1beta1.UpdateHelmValuesAction))
 			if err != nil {
 				return err
 			}
-			// ClusterProfile is managing mysql release
+			// ClusterProfile is managing redis release
 			err = verifyReleaseReport(currentClusterReport, currentClusterProfile.Spec.HelmCharts[1].ReleaseNamespace,
 				currentClusterProfile.Spec.HelmCharts[1].ReleaseName, string(configv1beta1.NoHelmAction))
 			if err != nil {
@@ -614,4 +676,13 @@ func verifyDeployedGroupVersionKind(clusterProfileName string) {
 		}
 	}
 	Expect(found).To(BeTrue())
+}
+
+func setTier(clusterProfileName string, tier int32) {
+	currentClusterProfile := &configv1beta1.ClusterProfile{}
+	Expect(k8sClient.Get(context.TODO(),
+		types.NamespacedName{Name: clusterProfileName},
+		currentClusterProfile)).To(Succeed())
+	currentClusterProfile.Spec.Tier = tier
+	Expect(k8sClient.Update(context.TODO(), currentClusterProfile)).To(Succeed())
 }

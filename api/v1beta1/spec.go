@@ -505,6 +505,7 @@ type KustomizationRef struct {
 // a ClusterProfile. By default, withdrawpolicies, deployed Helm charts and Kubernetes
 // resources will be removed from Cluster. LeavePolicy instead leaves Helm charts
 // and Kubernetes policies in the Cluster.
+// +kubebuilder:validation:Enum:=WithdrawPolicies;LeavePolicies
 type StopMatchingBehavior string
 
 // Define the StopMatchingBehavior constants.
@@ -518,7 +519,7 @@ type TemplateResourceRef struct {
 	// cluster to fetch and use during template instantiation.
 	// For ClusterProfile namespace can be left empty. In such a case, namespace will
 	// be implicit set to cluster's namespace.
-	// Name can be expressed as a template and instantiate using
+	// Name and namespace can be expressed as a template and instantiate using
 	// - cluster namespace: .Cluster.metadata.namespace
 	// - cluster name: .Cluster.metadata.name
 	// - cluster type: .Cluster.kind

@@ -28,20 +28,48 @@ import (
 
 	configv1beta1 "github.com/projectsveltos/addon-controller/api/v1beta1"
 	"github.com/projectsveltos/libsveltos/lib/funcmap"
-	"github.com/projectsveltos/libsveltos/lib/utils"
+	"github.com/projectsveltos/libsveltos/lib/k8s_utils"
 )
 
 // The TemplateResource namespace can be specified or it will inherit the cluster namespace
 func getTemplateResourceNamespace(clusterSummary *configv1beta1.ClusterSummary,
-	ref *configv1beta1.TemplateResourceRef) string {
+	ref *configv1beta1.TemplateResourceRef) (string, error) {
 
 	namespace := ref.Resource.Namespace
 	if namespace == "" {
 		// Use cluster namespace
-		namespace = clusterSummary.Spec.ClusterNamespace
+		return clusterSummary.Spec.ClusterNamespace, nil
 	}
 
-	return namespace
+	// Accept namespaces that are templates
+	templateName := getTemplateName(clusterSummary.Spec.ClusterNamespace, clusterSummary.Spec.ClusterName,
+		string(clusterSummary.Spec.ClusterType))
+	tmpl, err := template.New(templateName).Option("missingkey=error").Funcs(funcmap.SveltosFuncMap()).Parse(ref.Resource.Namespace)
+	if err != nil {
+		return "", err
+	}
+
+	var buffer bytes.Buffer
+
+	// Cluster namespace and name can be used to instantiate the name of the resource that
+	// needs to be fetched from the management cluster. Defined an unstructured with namespace and name set
+	u := &unstructured.Unstructured{}
+	u.SetNamespace(clusterSummary.Spec.ClusterNamespace)
+	u.SetName(clusterSummary.Spec.ClusterName)
+	u.SetKind(string(clusterSummary.Spec.ClusterType))
+
+	if err := tmpl.Execute(&buffer,
+		struct {
+			Cluster map[string]interface{}
+			// deprecated. This used to be original format which was different than rest of templating
+			ClusterNamespace, ClusterName string
+		}{
+			Cluster:          u.UnstructuredContent(),
+			ClusterNamespace: clusterSummary.Spec.ClusterNamespace,
+			ClusterName:      clusterSummary.Spec.ClusterName}); err != nil {
+		return "", fmt.Errorf("error executing template: %w", err)
+	}
+	return buffer.String(), nil
 }
 
 // Resources referenced in the management cluster can have their name expressed in function
@@ -97,14 +125,17 @@ func collectTemplateResourceRefs(ctx context.Context, clusterSummary *configv1be
 	result := make(map[string]*unstructured.Unstructured)
 	for i := range clusterSummary.Spec.ClusterProfileSpec.TemplateResourceRefs {
 		ref := clusterSummary.Spec.ClusterProfileSpec.TemplateResourceRefs[i]
-		ref.Resource.Namespace = getTemplateResourceNamespace(clusterSummary, &ref)
 		var err error
+		ref.Resource.Namespace, err = getTemplateResourceNamespace(clusterSummary, &ref)
+		if err != nil {
+			return nil, err
+		}
 		ref.Resource.Name, err = getTemplateResourceName(clusterSummary, &ref)
 		if err != nil {
 			return nil, err
 		}
 
-		dr, err := utils.GetDynamicResourceInterface(restConfig, ref.Resource.GroupVersionKind(), ref.Resource.Namespace)
+		dr, err := k8s_utils.GetDynamicResourceInterface(restConfig, ref.Resource.GroupVersionKind(), ref.Resource.Namespace)
 		if err != nil {
 			return nil, err
 		}

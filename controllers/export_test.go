@@ -121,7 +121,7 @@ var (
 	ShouldUninstall                          = shouldUninstall
 	ShouldUpgrade                            = shouldUpgrade
 	UpdateChartsInClusterConfiguration       = updateChartsInClusterConfiguration
-	UpdateStatusForeferencedHelmReleases     = updateStatusForeferencedHelmReleases
+	UpdateStatusForReferencedHelmReleases    = updateStatusForReferencedHelmReleases
 	UpdateStatusForNonReferencedHelmReleases = updateStatusForNonReferencedHelmReleases
 	CreateReportForUnmanagedHelmRelease      = createReportForUnmanagedHelmRelease
 	UpdateClusterReportWithHelmReports       = updateClusterReportWithHelmReports
@@ -129,6 +129,7 @@ var (
 	GetHelmReferenceResourceHash             = getHelmReferenceResourceHash
 	GetHelmChartValuesHash                   = getHelmChartValuesHash
 	GetCredentialsAndCAFiles                 = getCredentialsAndCAFiles
+	GetInstantiatedChart                     = getInstantiatedChart
 
 	InstantiateTemplateValues = instantiateTemplateValues
 

@@ -11,7 +11,7 @@ spec:
   - repositoryURL: https://kyverno.github.io/kyverno/
     repositoryName: kyverno
     chartName: kyverno/kyverno
-    chartVersion: 3.3.3
+    chartVersion: 3.3.4
     releaseName: kyverno-latest
     releaseNamespace: kyverno
     values: |
@@ -28,7 +28,7 @@ spec:
   - repositoryURL: https://charts.bitnami.com/bitnami
     repositoryName: bitnami
     chartName: bitnami/contour
-    chartVersion: 19.3.1
+    chartVersion: 19.3.2
     releaseName: contour
     releaseNamespace: projectcontour
     helmChartAction: Install
