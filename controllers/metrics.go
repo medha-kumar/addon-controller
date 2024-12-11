@@ -34,7 +34,7 @@ var (
 			Namespace: "projectsveltos",
 			Name:      "program_resources_time_seconds",
 			Help:      "Program Resources on a workload cluster duration distribution",
-			Buckets:   []float64{0.5, 0.55, 0.6, 0.65, 0.7, 1, 1.5, 2, 5, 10, 60},
+			Buckets:   []float64{0.5, 1, 1.5, 2, 3, 5, 10, 30, 60, 90, 120},
 		},
 	)
 
@@ -43,7 +43,7 @@ var (
 			Namespace: "projectsveltos",
 			Name:      "program_charts_time_seconds",
 			Help:      "Program Helm charts on a workload cluster duration distribution",
-			Buckets:   []float64{0.3, 0.6, 0.9, 1.2, 1.5, 2, 3, 5, 10, 30, 60},
+			Buckets:   []float64{0.5, 1, 1.5, 2, 3, 5, 10, 30, 60, 90, 120},
 		},
 	)
 
@@ -81,7 +81,7 @@ func newResourceHistogram(clusterNamespace, clusterName string, clusterType libs
 			Namespace: clusterInfo,
 			Name:      "program_resources_time_seconds",
 			Help:      "Program Resources on a workload cluster duration distribution",
-			Buckets:   []float64{0.5, 0.55, 0.6, 0.65, 0.7, 1, 1.5, 2, 5, 10, 60},
+			Buckets:   []float64{0.5, 1, 1.5, 2, 3, 5, 10, 30, 60, 90, 120},
 		},
 	)
 
@@ -113,7 +113,7 @@ func newChartHistogram(clusterNamespace, clusterName string, clusterType libsvel
 			Namespace: clusterInfo,
 			Name:      "program_charts_time_seconds",
 			Help:      "Program Helm Charts on a workload cluster duration distribution",
-			Buckets:   []float64{0.3, 0.6, 0.9, 1.2, 1.5, 2, 3, 5, 10, 30, 60},
+			Buckets:   []float64{0.5, 1, 1.5, 2, 3, 5, 10, 30, 60, 90, 120},
 		},
 	)
 
